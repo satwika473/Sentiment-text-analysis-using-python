@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Sentiment Analysis</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background:url("https://assets.datamation.com/uploads/2023/11/dm_20231103-what-is-factor-analysis.png");
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 50px;
+        }
+        #formContainer {
+            margin-bottom: 30px;
+            width: 100%;
+            max-width: 600px;
+        }
+        input[type="text"], input[type="url"], textarea {
+            width: 80%;
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .b1 {
+            padding: 10px 15px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-right: 10px;
+            background-color: rgb(82, 82, 243);
+            color: antiquewhite;
+        }
+        .b2{
+            padding: 10px 15px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-right: 10px;
+            background-color: rgb(177, 36, 212);
+            color: antiquewhite;
+        }
+        #chartContainer {
+            width: 50%;
+            max-width: 600px;
+            height:30%;
+        }
+        #errorMessage {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="formContainer">
+        <h2 style="color:antiquewhite;font-family:cursive;">Enter Article URL or Text for Sentiment Analysis</h2>
+
+        <!-- URL Input Field -->
+        <input type="url" id="urlInput" placeholder="https://example.com/article" />
+        
+        <!-- Text Input Field -->
+        <textarea id="textInput" placeholder="Enter text for analysis"></textarea>
+
+        <!-- Buttons for both URL and Text Analysis -->
+        <button class="b1" onclick="analyzeSentiment()">Analyze Sentiment (URL)</button>
+        <button class="b2" onclick="analyzeSentimentText()">Analyze Sentiment (Text)</button>
+
+        <div id="errorMessage"></div>
+    </div>
+
+    <div id="chartContainer">
+        <canvas id="sentimentChart"></canvas>
+    </div>
+
+    <script>
+        let chart; // To hold the Chart instance
+
+        // Analyze sentiment for the URL input
+        function analyzeSentiment() {
+            const url = document.getElementById('urlInput').value.trim();
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = '';
+
+            if (!url) {
+                errorMessage.textContent = 'Please enter a valid URL.';
+                return;
+            }
+
+            // Send the URL to the Flask backend
+            fetch('/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ input_type: 'url', url: url }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    errorMessage.textContent = data.error;
+                    return;
+                }
+                updateChart(data);
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                errorMessage.textContent = 'An error occurred while processing the URL.';
+            });
+        }
+
+        // Analyze sentiment for the text input
+        function analyzeSentimentText() {
+            const text = document.getElementById('textInput').value.trim();
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = '';
+
+            if (!text) {
+                errorMessage.textContent = 'Please enter some text for analysis.';
+                return;
+            }
+
+            // Send the custom text to the Flask backend
+            fetch('/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ input_type: 'text', text: text }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    errorMessage.textContent = data.error;
+                    return;
+                }
+                updateChart(data);
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                errorMessage.textContent = 'An error occurred while processing the text.';
+            });
+        }
+
+        // Function to update the pie chart
+        function updateChart(data) {
+            const ctx = document.getElementById('sentimentChart').getContext('2d');
+
+            const sentimentData = [data.positive, data.neutral, data.negative];
+            const sentimentLabels = ['Positive', 'Neutral', 'Negative'];
+            const sentimentColors = ['#4CAF50', '#FFC107', '#F44336'];
+
+            if (chart) {
+                chart.data.datasets[0].data = sentimentData;
+                chart.update();
+            } else {
+                chart = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: sentimentLabels,
+                        datasets: [{
+                            label: 'Sentiment Analysis',
+                            data: sentimentData,
+                            backgroundColor: sentimentColors,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                            },
+                        }
+                    }
+                });
+            }
+        }
+    </script>
+
+</body>
+</html>
